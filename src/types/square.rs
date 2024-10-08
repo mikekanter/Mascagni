@@ -4,6 +4,7 @@ use std::ops::{BitXor, Index, IndexMut};
 ///
 /// [LERFM]: https://www.chessprogramming.org/Square_Mapping_Considerations#Little-Endian_Rank-File_Mapping
 #[derive(Copy, Clone, PartialEq, Debug, Default)]
+#[rustfmt::skip]
 pub enum Square {
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
@@ -46,6 +47,14 @@ impl Square {
     pub const fn file(self) -> usize {
         self as usize & 7
     }
+
+    pub const fn rank(self) -> usize {
+        self as usize / 8
+    }
+
+    pub const fn index(self) -> usize {
+        self as usize
+    }
 }
 
 impl TryFrom<&str> for Square {
@@ -84,7 +93,6 @@ impl<T> IndexMut<Square> for [T] {
         &mut self[square as usize]
     }
 }
-
 
 #[cfg(test)]
 mod tests {
