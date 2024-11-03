@@ -47,6 +47,22 @@ pub fn generate_king_moves(square: Square) -> Bitboard {
 pub fn generate_rook_moves(square: Square) -> Bitboard {
 }
 
+pub fn white_pawn_captures(square: Square) -> Bitboard {
+    let bb: u64 = 1 << square as u8;
+    let answer: u64 = 0
+        | (bb & !A_FILE) << 7
+        | (bb & !H_FILE) << 9;
+    Bitboard(answer)
+}
+
+pub fn black_pawn_captures(square: Square) -> Bitboard {
+    let bb: u64 = 1 << square as u8;
+    let answer: u64 = 0
+        | (bb & !A_FILE) >> 9
+        | (bb & !H_FILE) >> 7;
+    Bitboard(answer)
+}
+
 /// Takes an attack generator function and returns a map from squares to attack bitboards
 pub fn create_map<T: Fn(Square) -> Bitboard>(generator: T) -> [Bitboard; Square::NUM] {
     let mut map: [Bitboard; Square::NUM] = [Bitboard(0); Square::NUM];
