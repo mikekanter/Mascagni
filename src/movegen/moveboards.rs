@@ -1,4 +1,4 @@
-use crate::types::{Bitboard, File, Square};
+use crate::types::{Bitboard, Color, File, Square};
 
 const A_FILE: u64 = Bitboard::file(File::A).0;
 const B_FILE: u64 = A_FILE << 1;
@@ -47,7 +47,8 @@ pub fn generate_king_moves(square: Square) -> Bitboard {
 pub fn generate_rook_moves(square: Square) -> Bitboard {
 }
 
-pub fn white_pawn_captures(square: Square) -> Bitboard {
+
+fn white_pawn_captures(square: Square) -> Bitboard {
     let bb: u64 = 1 << square as u8;
     let answer: u64 = 0
         | (bb & !A_FILE) << 7
@@ -55,12 +56,19 @@ pub fn white_pawn_captures(square: Square) -> Bitboard {
     Bitboard(answer)
 }
 
-pub fn black_pawn_captures(square: Square) -> Bitboard {
+fn black_pawn_captures(square: Square) -> Bitboard {
     let bb: u64 = 1 << square as u8;
     let answer: u64 = 0
         | (bb & !A_FILE) >> 9
         | (bb & !H_FILE) >> 7;
     Bitboard(answer)
+}
+
+pub fn pawn_captures(square: Square, color: Color) -> Bitboard {
+    match color {
+        Color::White => white_pawn_captures(square),
+        Color::Black => black_pawn_captures(square),
+    }
 }
 
 /// Takes an attack generator function and returns a map from squares to attack bitboards
