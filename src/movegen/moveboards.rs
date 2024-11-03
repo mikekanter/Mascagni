@@ -42,11 +42,78 @@ pub fn generate_king_moves(square: Square) -> Bitboard {
     Bitboard(answer)
 }
 
-/// Returns the rook moves (on an empty board)
-/// TODO: refine this
-pub fn generate_rook_moves(square: Square) -> Bitboard {
+/// Generic function for generating ray bitboards in any direction from any square. This currently
+/// actually over-extends. It ***always*** includes the first occupied square in the ray. To deal
+/// with this, we should make sure we do an XOr operation with the teammate occupancy bitboard to
+/// find the actual pseudo-legal moves.
+pub fn ray_bitboard<T: Fn(Square) -> bool>(square: &Square, occupancy: &Bitboard, offset: i8, predicate: T) -> Bitboard {
+    let oc = *occupancy;
+    let empty = Bitboard::default();
+    let mut dir_bitboard = Bitboard::default();
+    let mut current_square = square.shift(offset);
+    while predicate(current_square) {
+        let cur_bb = Bitboard::from(current_square);
+        dir_bitboard |= cur_bb;
+        if cur_bb & oc > empty {
+            break
+        }
+        current_square = current_square.shift(8);
+    }
+    dir_bitboard
 }
 
+/// Returns the rook moves, given a square and occupancy
+pub fn generate_rook_moves(square: &Square, occupancy: &Bitboard) -> Bitboard {
+    let north_bitboard = ray_bitboard(square, occupancy, 8, |sq| sq.index() < 64);
+    let south_bitboard = ray_bitboard(square, occupancy, -8, |sq| sq.index() < 64);
+
+    let east_bitboard = ray_bitboard(square, occupancy, 1, |sq| sq.index() < 64 && sq.file() != File::A);
+    let west_bitboard = ray_bitboard(square, occupancy, -1, |sq| sq.index() < 64 && sq.file() != File::H);
+
+    north_bitboard
+        | south_bitboard
+        | east_bitboard
+        | west_bitboard
+}
+
+/// Returns the bishop moves, given a square and occupancy
+pub fn generate_bishop_moves(square: &Square, occupancy: &Bitboard) -> Bitboard {
+    let ne_bitboard = ray_bitboard(
+        square,
+        occupancy,
+        9,
+        |sq| sq.index() < 64 && sq.file() != File::A,
+    );
+    let sw_bitboard = ray_bitboard(
+        square,
+        occupancy,
+        -9,
+        |sq| sq.index() < 64 && sq.file() != File::H,
+    );
+    let nw_bitboard = ray_bitboard(
+        square,
+        occupancy,
+        7,
+        |sq| sq.index() < 64 && sq.file() != File::H,
+    );
+    let se_bitboard = ray_bitboard(
+        square,
+        occupancy,
+        -7,
+        |sq| sq.index() < 64 && sq.file() != File::A,
+    );
+
+    ne_bitboard
+        | sw_bitboard
+        | nw_bitboard
+        | se_bitboard
+}
+
+/// Queen moves are simply rook moves and bishop moves
+pub fn generate_queen_moves(square: &Square, occupancy: &Bitboard) -> Bitboard {
+    generate_rook_moves(square, occupancy)
+        | generate_bishop_moves(square, occupancy)
+}
 
 fn white_pawn_captures(square: Square) -> Bitboard {
     let bb: u64 = 1 << square as u8;
