@@ -1,5 +1,7 @@
 use std::ops::{BitXor, Index, IndexMut};
 
+use super::{File, Rank};
+
 /// Represents a square on a bitboard corresponding to the [Little-Endian Rank-File Mapping][LERFM]
 ///
 /// [LERFM]: https://www.chessprogramming.org/Square_Mapping_Considerations#Little-Endian_Rank-File_Mapping
@@ -44,12 +46,12 @@ impl Square {
     }
 
     /// Returns file of square
-    pub const fn file(self) -> usize {
-        self as usize & 7
+    pub const fn file(self) -> File {
+        File::new(self as u8 & 7)
     }
 
-    pub const fn rank(self) -> usize {
-        self as usize / 8
+    pub const fn rank(self) -> Rank {
+        Rank::new(self as u8 / 8)
     }
 
     pub const fn index(self) -> usize {

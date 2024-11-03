@@ -1,6 +1,6 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
-use super::{Rank, Square};
+use super::{Rank, File, Square};
 
 
 /// 64-bit unsigned. Each bit indicates a square's occupancy
@@ -18,10 +18,15 @@ impl Bitboard {
         self.0.count_ones() as usize
     }
     pub const fn rank(rank: Rank) -> Self {
-        todo!();
+        Self(255 << (rank as u8))
     }
 
-    /// Returns first set bit in bitboard
+    pub const fn file(file: File) -> Self {
+        let index = file as usize;
+        Self(0x101010101010101 << index)
+    }
+
+    /// lsb = least set bit? Returns first set bit in bitboard
     pub const fn lsb(self) -> Square {
         // trailing_zeroes() is the number of trailing zeroes in the binary number
         Square::new(self.0.trailing_zeros() as u8)
@@ -42,6 +47,24 @@ impl Bitboard {
     /// Clears a specific bit
     pub fn clear(&mut self, square: Square) {
         self.0 &= !(1 << square as u64);
+    }
+}
+
+impl From<Square> for Bitboard {
+    fn from(square: Square) -> Self {
+        Self(1 << square.index())
+    }
+}
+
+impl From<File> for Bitboard {
+    fn from(file: File) -> Self {
+        Self(0x101010101010101 << file.index())
+    }
+}
+
+impl From<Rank> for Bitboard {
+    fn from(rank: Rank) -> Self {
+        Self(255 << rank.index())
     }
 }
 
@@ -91,13 +114,4 @@ impl Not for Bitboard {
     fn not(self) -> Self::Output {
         Self(!self.0)
     }
-}
-
-fn pretty_print(b: Bitboard) {
-    let mut a = "-".repeat(64);
-    b.for_each(|square| {
-        let b = square.index();
-        let c = b + 1;
-        a.replace_range(b..c, "X")
-    })
 }

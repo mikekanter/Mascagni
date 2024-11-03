@@ -1,6 +1,6 @@
 use std::str::FromStr;
 use super::Board;
-use crate::types::{Color, Square};
+use crate::types::{Castling, Color, Square};
 
 pub enum FenParseErr {
     /// Fen is missing data
@@ -42,7 +42,7 @@ impl FromStr for Board {
         };
 
         // TODO: parse the castling rights
-        let castling_rights = elements.next();
+        board.state.castling = Castling::from(elements.next().unwrap());
 
         board.state.en_passant = elements.next().unwrap().try_into().map_err(|()| FenParseErr::InvalidEnPassant)?;
 
