@@ -1,11 +1,11 @@
-use std::ops::{BitXor, Index, IndexMut};
+use std::{cmp::max, ops::{BitXor, Index, IndexMut}};
 
 use super::{File, Rank};
 
 /// Represents a square on a bitboard corresponding to the [Little-Endian Rank-File Mapping][LERFM]
 ///
 /// [LERFM]: https://www.chessprogramming.org/Square_Mapping_Considerations#Little-Endian_Rank-File_Mapping
-#[derive(Copy, Clone, PartialEq, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Debug, Default, PartialOrd)]
 #[rustfmt::skip]
 pub enum Square {
     A1, B1, C1, D1, E1, F1, G1, H1,
@@ -57,6 +57,14 @@ impl Square {
     pub const fn index(self) -> usize {
         self as usize
     }
+
+}
+
+pub fn distance(from: &Square, to: &Square) -> usize {
+    max(
+        from.rank().distance(to.rank()),
+        from.file().distance(to.file()),
+    )
 }
 
 impl TryFrom<&str> for Square {

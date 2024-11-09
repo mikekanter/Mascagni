@@ -1,3 +1,5 @@
+use std::ops::Sub;
+
 #[derive(PartialEq, Eq, Ord, PartialOrd)]
 pub enum Rank { R1, R2, R3, R4, R5, R6, R7, R8 }
 
@@ -10,9 +12,13 @@ impl Rank {
     pub fn index(self) -> usize {
         self as usize
     }
+
+    pub fn distance(self, rhs: Rank) -> usize {
+        self.index().abs_diff(rhs.index())
+    }
 }
 
-#[derive(PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum File {A, B, C, D, E, F, G, H}
 
 impl File {
@@ -22,5 +28,9 @@ impl File {
     pub const NUM: usize = 8;
     pub fn index(self) -> usize {
         self as usize
+    }
+
+    pub fn distance(self, rhs: File) -> usize {
+        self.index().abs_diff(rhs.index())
     }
 }

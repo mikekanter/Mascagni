@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Default)]
 pub enum Piece {
     Pawn,
     Knight,
@@ -8,6 +8,7 @@ pub enum Piece {
     Rook,
     Queen,
     King,
+    #[default]
     None,
 }
 
