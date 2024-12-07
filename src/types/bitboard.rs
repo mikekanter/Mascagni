@@ -21,6 +21,10 @@ impl Bitboard {
         Self(255 << (rank as u8))
     }
 
+    pub fn universal() -> Self {
+        Self(u64::MAX)
+    }
+
     pub const fn file(file: File) -> Self {
         let index = file as usize;
         Self(0x101010101010101 << index)
@@ -52,6 +56,9 @@ impl Bitboard {
 
 impl From<Square> for Bitboard {
     fn from(square: Square) -> Self {
+        if square == Square::None {
+            return Self(0)
+        }
         Self(1 << square.index())
     }
 }

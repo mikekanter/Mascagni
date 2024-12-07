@@ -71,6 +71,9 @@ impl TryFrom<&str> for Square {
     type Error = ();
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if value == "-" {
+            return Ok(Self::None)
+        }
         match value.as_bytes() {
             [file @ b'a'..=b'h', rank @ b'1'..=b'8'] => {
                 let rank = rank - b'1';
@@ -111,6 +114,7 @@ mod tests {
     #[test]
     fn try_from_str() {
         assert_eq!(Square::try_from("a1"), Ok(Square::A1));
+        assert_eq!(Square::try_from("-"), Ok(Square::None));
     }
 
     // #[test]

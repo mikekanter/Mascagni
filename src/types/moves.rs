@@ -1,4 +1,4 @@
-use super::{Color, Piece, Square};
+use super::{Piece, Square};
 
 pub struct FullMove {
     piece: Piece,
@@ -39,9 +39,15 @@ pub enum MoveType {
 }
 
 impl Move {
-
     pub const START_MASK: u16 = 0b0000_0000_0011_1111;
     pub const TARGET_MASK: u16 = 0b0000_1111_1100_0000;
+    pub const fn new(start: Square, target: Square, move_type: MoveType) -> Self {
+        let start_index = start.index() as u16;
+        let target_index = target.index() as u16;
+        Self(
+            start_index | target_index << 6 | ((move_type as u16) << 12)
+        )
+    }
     pub const fn start(self) -> Square {
         Square::new((self.0 & Self::START_MASK) as u8)
     }

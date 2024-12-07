@@ -1,3 +1,4 @@
+use core::fmt;
 use std::str::FromStr;
 use super::Board;
 use crate::types::{Castling, Color, Square};
@@ -8,6 +9,18 @@ pub enum FenParseErr {
     InvalidPieceType,
     InvalidColor,
     InvalidEnPassant,
+}
+
+impl fmt::Display for FenParseErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let disp = match self {
+            FenParseErr::MissingData => "Missing Data",
+            FenParseErr::InvalidColor => "Invalid Color",
+            FenParseErr::InvalidPieceType => "Invalid Piece Type",
+            FenParseErr::InvalidEnPassant => "Invalid En Passant",
+        };
+        write!(f, "{}", disp)
+    }
 }
 
 impl FromStr for Board {
@@ -31,6 +44,7 @@ impl FromStr for Board {
                 let color = if symbol.is_uppercase() { Color::White } else { Color::Black };
                 let square = Square::from_rank_file(rank as u8, file);
 
+                file += 1;
                 board.add_piece(square, color, piece)
             }
         }

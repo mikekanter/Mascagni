@@ -1,6 +1,6 @@
 use std::ops::Index;
 
-use super::{Bitboard, Square};
+use super::{Bitboard, Move, MoveType, Square};
 
 pub trait CastlingKind {
     /// The mask of the catling kind
@@ -11,10 +11,11 @@ pub trait CastlingKind {
     const CHECK_SQUARES: [Square; 2];
     // The move associated with such a castling kind.
     // const CASTLING_MOVE
+    const CASTLING_MOVE: Move;
 }
 
 macro_rules! impl_castling_kind {
-    ($($kind: ident => $mask:expr, $start_square:expr, $through_square:expr, $target_square: expr,)*) => {
+    ($($kind: ident => $mask:expr, $start_square:expr, $through_square:expr, $target_square: expr, $move_type: expr,)*) => {
         $(
             pub struct $kind;
 
@@ -22,16 +23,17 @@ macro_rules! impl_castling_kind {
                 const MASK: u8 = $mask;
                 const PATH_MASK: Bitboard = Bitboard((1 << ($start_square.index() + 1)) | (1 << ($through_square.index() + 1)));
                 const CHECK_SQUARES: [Square; 2] = [$start_square, $through_square];
+                const CASTLING_MOVE: Move = Move::new($start_square, $target_square, $move_type);
             }
         )*
     };
 }
 
 impl_castling_kind! {
-    WhiteKingside => 1, Square::E1, Square::F1, Square::G1,
-    WhiteQueenside => 2, Square::E1, Square::D1, Square::C1,
-    BlackKingside => 4, Square::E8, Square::F8, Square::G8,
-    BlackQueenside => 4, Square::E8, Square::D8, Square::C8,
+    WhiteKingside => 1, Square::E1, Square::F1, Square::G1, MoveType::KingsideCastle,
+    WhiteQueenside => 2, Square::E1, Square::D1, Square::C1, MoveType::QueensideCastle,
+    BlackKingside => 4, Square::E8, Square::F8, Square::G8, MoveType::KingsideCastle,
+    BlackQueenside => 8, Square::E8, Square::D8, Square::C8, MoveType::QueensideCastle,
 }
 
 #[derive(Copy, Clone, Default)]

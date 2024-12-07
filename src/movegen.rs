@@ -1,4 +1,4 @@
-use crate::types::{distance, Bitboard, Color, File, Piece, Square};
+use crate::types::{distance, Bitboard, Color, File, Piece, Rank, Square};
 
 const A_FILE: u64 = Bitboard::file(File::A).0;
 const B_FILE: u64 = A_FILE << 1;
@@ -10,6 +10,7 @@ const GH_FILE: u64 = G_FILE | H_FILE;
 /// These are special bitboards that we generate once and then use forever
 #[derive(Copy, Clone)]
 pub struct StandardBitboards {
+    pub pawn_captures: [[Bitboard; Square::NUM]; Color::NUM],
     pub knight_attacks: [Bitboard; Square::NUM],
     pub king_attacks: [Bitboard; Square::NUM],
     /// given 2 squares, get the squares between them (useful for blocking sliding pieces)
@@ -89,14 +90,13 @@ pub fn generate_king_moves(square: Square) -> Bitboard {
 /// find the actual pseudo-legal moves.
 pub fn sliding_attack(square: &Square, occupancy: &Bitboard, offset: i8) -> Bitboard {
     let oc = *occupancy;
-    let empty = Bitboard::default();
     let mut dir_bitboard = Bitboard::default();
     let mut current_square = square.clone();
     while safe_destination(&current_square, offset) {
-        current_square = current_square.shift(8);
+        current_square = current_square.shift(offset);
         let cur_bb = Bitboard::from(current_square);
         dir_bitboard |= cur_bb;
-        if cur_bb & oc > empty {
+        if !(cur_bb & oc).is_empty() {
             break
         }
     }
@@ -158,27 +158,22 @@ pub fn generate_queen_attacks(square: &Square, occupancy: &Bitboard) -> Bitboard
         | generate_bishop_attacks(square, occupancy)
 }
 
-fn white_pawn_captures(square: Square) -> Bitboard {
-    let bb: u64 = 1 << square as u8;
+fn white_pawn_captures(square: &Square) -> Bitboard {
+    let sq = square.clone();
+    let bb: u64 = 1 << sq as u8;
     let answer: u64 = 0
         | (bb & !A_FILE) << 7
         | (bb & !H_FILE) << 9;
     Bitboard(answer)
 }
 
-fn black_pawn_captures(square: Square) -> Bitboard {
-    let bb: u64 = 1 << square as u8;
+fn black_pawn_captures(square: &Square) -> Bitboard {
+    let sq = square.clone();
+    let bb: u64 = 1 << sq as u8;
     let answer: u64 = 0
         | (bb & !A_FILE) >> 9
         | (bb & !H_FILE) >> 7;
     Bitboard(answer)
-}
-
-pub fn pawn_captures(square: Square, color: Color) -> Bitboard {
-    match color {
-        Color::White => white_pawn_captures(square),
-        Color::Black => black_pawn_captures(square),
-    }
 }
 
 /// Takes an attack generator function and returns a map from squares to attack bitboards
@@ -190,9 +185,70 @@ pub fn create_map<T: Fn(Square) -> Bitboard>(generator: T) -> [Bitboard; Square:
     map
 }
 
+pub fn white_pawn_advances(square: &Square, occupancy: &Bitboard) -> Bitboard {
+    let rank = square.rank();
+    let mut bb = Bitboard(0);
+    if rank == Rank::R8 {
+        // should not be possible but just in case
+        return Bitboard(0)
+    }
+    if !safe_destination(square, -8) {
+        return bb
+    }
+    let mut advance_square = square.shift(8);
+    let mut cur_bb = Bitboard::from(advance_square);
+    if (cur_bb & *occupancy).is_empty() {
+        bb.set(advance_square)
+    }
+    if rank == Rank::R2 && !bb.is_empty() {
+        // can do a double advance
+        if safe_destination(&advance_square, 8) {
+            advance_square = advance_square.shift(8);
+            cur_bb = Bitboard::from(advance_square);
+            if (cur_bb & *occupancy).is_empty() {
+                bb.set(advance_square);
+            }
+        }
+    }
+    return bb
+}
+
+pub fn black_pawn_advances(square: &Square, occupancy: &Bitboard) -> Bitboard {
+    let rank = square.rank();
+    let mut bb = Bitboard(0);
+    if rank == Rank::R1 {
+        // should not be possible but just in case
+        return Bitboard(0)
+    }
+    let mut advance_square = square.shift(-8);
+    if !safe_destination(square, -8) {
+        return bb
+    }
+    let mut cur_bb = Bitboard::from(advance_square);
+    if (cur_bb & *occupancy).is_empty() {
+        bb.set(advance_square)
+    }
+    if rank == Rank::R7 && !bb.is_empty() {
+        // can do a double advance
+        advance_square = advance_square.shift(-8);
+        if !safe_destination(square, -16) {
+            return bb
+        }
+        cur_bb = Bitboard::from(advance_square);
+        if (cur_bb & *occupancy).is_empty() {
+            bb.set(advance_square);
+        }
+    }
+    return bb
+}
+
 impl StandardBitboards {
     pub fn new() -> Self {
         Self {
+            pawn_captures: [
+                create_map(|square| white_pawn_captures(&square)),
+                create_map(|square| black_pawn_captures(&square))
+            ],
             knight_attacks: create_map(|square| generate_knight_moves(square)),
             king_attacks: create_map(|square| generate_king_moves(square)),
             between: generate_betweeners(),
@@ -203,6 +259,10 @@ impl StandardBitboards {
 impl Default for StandardBitboards {
     fn default() -> Self {
         Self {
+            pawn_captures: [
+                create_map(|square| white_pawn_captures(&square)),
+                create_map(|square| black_pawn_captures(&square))
+            ],
             knight_attacks: create_map(|square| generate_knight_moves(square)),
             king_attacks: create_map(|square| generate_king_moves(square)),
             between: generate_betweeners(),
