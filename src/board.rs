@@ -2,11 +2,13 @@ use std::str::FromStr;
 
 use crate::types::{Bitboard, BlackKingside, BlackQueenside, Castling, CastlingKind, Color, File, MoveList, MoveType, Piece, Rank, Square, WhiteKingside, WhiteQueenside};
 
-use crate::movegen::{black_pawn_advances, generate_bishop_attacks, generate_queen_attacks, generate_rook_attacks, white_pawn_advances, StandardBitboards};
+use self::movegen::{black_pawn_advances, generate_bishop_attacks, generate_queen_attacks, generate_rook_attacks, white_pawn_advances, StandardBitboards};
 
 use self::parser::FenParseErr;
 
 mod parser;
+mod movegen;
+mod makemove;
 
 /// Basic state of the board
 #[derive(Default, Copy, Clone)]
@@ -34,7 +36,7 @@ pub struct CheckState {
 #[derive(Clone)]
 pub struct Board {
     // basic board state
-    side_to_move: Color,
+    pub side_to_move: Color,
     state: BoardState,
     // pieces / mailboxes
     colors: [Bitboard; Color::NUM],
@@ -44,7 +46,7 @@ pub struct Board {
     // calculated board state
     checking_state: CheckState,
     pinning_state: [Bitboard; Square::NUM],
-    legal_moves: MoveList,
+    pub legal_moves: MoveList,
 }
 
 
@@ -53,14 +55,11 @@ impl Board {
     //     print!("{}", fen);
     //     todo!()
     // }
-    pub fn new(fen: &str) -> Result<Self, FenParseErr> {
-        println!("We are in new");
-        match Self::from_str(fen) {
+    /// Create a new board from a given fen
+    pub fn new(fen: String) -> Result<Self, FenParseErr> {
+        match Self::from_str(&fen) {
             Ok(mut board) => {
-                println!("We have a board");
-                board.checking_state = board.check_state();
-                board.pinning_state = board.pin_state();
-                board.legal_moves = board.generate_legal_moves();
+                board.analyze_board();
                 Ok(board)
             }
             Err(err) => {
@@ -69,11 +68,48 @@ impl Board {
             }
         }
     }
+
+    /// Should be run on board creation and after each move. This function generates legal moves
+    /// and updates other basic state about the board.
+    pub fn analyze_board(&mut self) {
+        self.checking_state = self.calculate_check_state();
+        self.pinning_state = self.calculate_pin_state();
+        self.legal_moves = self.generate_legal_moves();
+    }
+
+    /// determine if the current side to move is checkmated.
+    pub fn is_checkmate(&self) -> bool {
+        if self.legal_moves.len == 0 && self.checking_state.checks[0].checking_piece != Square::None {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// determine if the current position is a stalemate
+    pub fn is_stalemate(&self) -> bool {
+        if self.legal_moves.len == 0 && self.checking_state.checks[0].checking_piece == Square::None {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn piece_on(&self, square: Square) -> Piece {
+        self.mailbox[square]
+    }
+
     pub fn add_piece(&mut self, square: Square, color: Color, piece: Piece) {
         // TODO: Update mailbox?
         self.pieces[piece].set(square);
         self.colors[color].set(square);
         self.mailbox[square] = piece;
+    }
+
+    pub fn remove_piece(&mut self, square: Square, color: Color, piece: Piece) {
+        self.pieces[piece].clear(square);
+        self.colors[color].clear(square);
+        self.mailbox[square] = Piece::None;
     }
 
     pub fn our(&self, piece: Piece) -> Bitboard {
@@ -92,11 +128,11 @@ impl Board {
     /// ```rust
     /// let sq = Square::E4;
     /// // (assume one of our pieces is on E4)
-    /// let pins = self.pin_state();
+    /// let pins = self.calculate_pin_state();
     /// let pins_for_sq = pins[sq];
     /// // The piece on E4 cannot legally move away from the pins_for_sq bitboard
     /// ```
-    pub fn pin_state(&self) -> [Bitboard; Square::NUM] {
+    pub fn calculate_pin_state(&self) -> [Bitboard; Square::NUM] {
         let their_sliders = self.their(Piece::Rook)
             | self.their(Piece::Bishop)
             | self.their(Piece::Queen);
@@ -128,7 +164,7 @@ impl Board {
     }
 
     /// Get the check state for the current position
-    pub fn check_state(&self) -> CheckState {
+    pub fn calculate_check_state(&self) -> CheckState {
         let our_nonkings = self.colors[self.side_to_move] ^ self.pieces[Piece::King];
         let our_king = self.our(Piece::King);
 
@@ -149,10 +185,10 @@ impl Board {
                 Piece::None => Bitboard::default(),
             };
             answer.check_space |= check_space;
-            if !(check_space & our_king).is_empty() {
+            if !((check_space & our_king).is_empty()) {
                 // this piece checks our king
                 let mut index = 0;
-                if answer.checks[0].checking_piece == Square::None {
+                if answer.checks[0].checking_piece != Square::None {
                     index = 1;
                 }
                 answer.checks[index].checking_piece = square;
@@ -360,7 +396,7 @@ impl Board {
             cur_square = cur_square.shift(1);
         }
         lines.reverse();
-        println!("{}", lines.join("\n"))
+        println!("{}", lines.join("\n"));
     }
 }
 
