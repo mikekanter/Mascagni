@@ -10,6 +10,15 @@ impl Color {
     pub const NUM: usize = 2;
 }
 
+impl ToString for Color {
+    fn to_string(&self) -> String {
+        match self {
+            Color::White => String::from("White"),
+            Color::Black => String::from("Black"),
+        }
+    }
+}
+
 impl Not for Color {
     type Output = Self;
 

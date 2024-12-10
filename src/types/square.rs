@@ -57,7 +57,6 @@ impl Square {
     pub const fn index(self) -> usize {
         self as usize
     }
-
 }
 
 pub fn distance(from: &Square, to: &Square) -> usize {
@@ -65,6 +64,16 @@ pub fn distance(from: &Square, to: &Square) -> usize {
         from.rank().distance(to.rank()),
         from.file().distance(to.file()),
     )
+}
+
+impl ToString for Square {
+    fn to_string(&self) -> String {
+        if *self == Square::None {
+            return String::from("Null Square")
+        }
+        self.file().to_string();
+        format!("{}{}", self.file().to_string(), self.rank().to_string())
+    }
 }
 
 impl TryFrom<&str> for Square {
