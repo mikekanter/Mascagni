@@ -1,9 +1,20 @@
 use super::{Piece, Square};
 
+#[derive(Clone, Copy, PartialEq, Default)]
 pub struct FullMove {
-    piece: Piece,
-    inner: Move,
+    pub piece: Piece,
+    pub inner_move: Move,
 }
+
+impl FullMove {
+    pub const fn new(piece: Piece, mv: Move) -> Self {
+        Self {
+            piece,
+            inner_move: mv,
+        }
+    }
+}
+
 
 /// A move is essentially represented as a u16.
 /// The first 6 bits represent the initial square
@@ -42,17 +53,15 @@ impl Move {
     pub const START_MASK: u16 = 0b0000_0000_0011_1111;
     pub const TARGET_MASK: u16 = 0b0000_1111_1100_0000;
     pub const fn new(start: Square, target: Square, move_type: MoveType) -> Self {
-        let start_index = start.index() as u16;
-        let target_index = target.index() as u16;
         Self(
-            start_index | target_index << 6 | ((move_type as u16) << 12)
+            start as u16 | (target as u16) << 6 | (move_type as u16) << 12
         )
     }
     pub const fn start(self) -> Square {
         Square::new((self.0 & Self::START_MASK) as u8)
     }
     pub const fn target(self) -> Square {
-        Square::new((self.0 & Self::TARGET_MASK) as u8 >> 6)
+        Square::new(((self.0 & Self::TARGET_MASK) >> 6) as u8)
     }
     pub const fn kind(self) -> MoveType {
         unsafe { std::mem::transmute((self.0 >> 12) as u8) }
@@ -64,7 +73,18 @@ impl Move {
         matches!(self.kind(), MoveType::KingsideCastle)
             || matches!(self.kind(), MoveType::QueensideCastle)
     }
+    /// TODO: See if this actually works.
     pub const fn is_capture(self) -> bool {
         (self.0 >> 14) & 1 != 0
+    }
+    pub const fn is_promotion(self) -> bool {
+        matches!(self.kind(), MoveType::PromotionToKnight)
+            || matches!(self.kind(), MoveType::PromotionToBishop)
+            || matches!(self.kind(), MoveType::PromotionToRook)
+            || matches!(self.kind(), MoveType::PromotionToQueen)
+            || matches!(self.kind(), MoveType::PromotionCaptureToKnight)
+            || matches!(self.kind(), MoveType::PromotionCaptureToBishop)
+            || matches!(self.kind(), MoveType::PromotionCaptureToRook)
+            || matches!(self.kind(), MoveType::PromotionCaptureToQueen)
     }
 }
