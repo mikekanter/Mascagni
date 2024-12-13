@@ -8,6 +8,10 @@ pub enum Color {
 
 impl Color {
     pub const NUM: usize = 2;
+
+    pub const fn new(value: usize) -> Self {
+        unsafe { std::mem::transmute(value as u8) }
+    }
 }
 
 impl ToString for Color {

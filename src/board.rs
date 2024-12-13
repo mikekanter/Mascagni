@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use zobrist::ZOBRIST;
+
 use crate::types::{Bitboard, BlackKingside, BlackQueenside, Castling, CastlingKind, Color, File, MoveList, MoveType, Piece, Rank, Square, WhiteKingside, WhiteQueenside};
 
 use self::movegen::{black_pawn_advances, generate_bishop_attacks, generate_queen_attacks, generate_rook_attacks, white_pawn_advances, StandardBitboards};
@@ -9,10 +11,18 @@ use self::parser::FenParseErr;
 mod parser;
 mod movegen;
 mod makemove;
+mod zobrist;
 
 /// Basic state of the board
+/// This does not include all of the board data. It includes zobrist hashes for pawns, minor, and
+/// major pieces. Plus a hash for all pieces (and maybe a hash for non-pawns?)
 #[derive(Default, Copy, Clone)]
 struct BoardState {
+    hash_key: u64,
+    pawn_key: u64,
+    major_piece_key: u64,
+    minor_piece_key: u64,
+    non_pawn_keys: [u64; Color::NUM],
     en_passant: Square,
     halfmove_clock: u8,
     castling: Castling,
@@ -38,6 +48,7 @@ pub struct Board {
     // basic board state
     pub side_to_move: Color,
     state: BoardState,
+    state_stack: Vec<BoardState>,
     // pieces / mailboxes
     colors: [Bitboard; Color::NUM],
     pieces: [Bitboard; Piece::NUM],
@@ -51,10 +62,6 @@ pub struct Board {
 
 
 impl Board {
-    // pub fn new(fen: &str) -> Result<Self, FenParseErr> {
-    //     print!("{}", fen);
-    //     todo!()
-    // }
     /// Create a new board from a given fen
     pub fn new(fen: String) -> Result<Self, FenParseErr> {
         match Self::from_str(&fen) {
@@ -69,9 +76,89 @@ impl Board {
         }
     }
 
+    /// Generates the zobrist hash key for the current position
+    fn generate_hash_key(&self) -> u64 {
+        let mut hash = 0;
+        for p in 0..Piece::NUM {
+            let piece = Piece::new(p);
+            for c in 0..Color::NUM {
+                let color = Color::new(c);
+                let bb = self.pieces_of(piece, color);
+                for square in bb {
+                    hash ^= ZOBRIST.pieces[color][piece][square];
+                }
+            }
+        }
+        if self.state.en_passant != Square::None {
+            hash ^= ZOBRIST.en_passant[self.state.en_passant];
+        }
+        if self.side_to_move == Color::White {
+            hash ^= ZOBRIST.side_to_move;
+        }
+        hash ^= ZOBRIST.castling[self.state.castling];
+        hash
+    }
+
+    /// Generates a zobrist hash key that just describes the pawn positions right now.
+    fn generate_pawn_hash(&self) -> u64 {
+        let mut hash = 0;
+        for color in [Color::White, Color::Black] {
+            for square in self.pieces_of(Piece::Pawn, color) {
+                hash ^= ZOBRIST.pieces[color][Piece::Pawn][square];
+            }
+        }
+        hash
+    }
+
+    /// Generates a zobrist hash key that describes the position of just major pieces.
+    fn generate_major_piece_hash(&self) -> u64 {
+        let mut hash = 0;
+        for color in [Color::White, Color::Black] {
+            for piece in [Piece::Queen, Piece::Rook] {
+                for square in self.pieces_of(Piece::Pawn, color) {
+                    hash ^= ZOBRIST.pieces[color][piece][square];
+                }
+            }
+        }
+        hash
+    }
+
+    /// Generates a zobrist hash key that describes the position of just minor pieces.
+    fn generate_minor_piece_hash(&self) -> u64 {
+        let mut hash = 0;
+        for color in [Color::White, Color::Black] {
+            for piece in [Piece::Bishop, Piece::Knight] {
+                for square in self.pieces_of(Piece::Pawn, color) {
+                    hash ^= ZOBRIST.pieces[color][piece][square];
+                }
+            }
+        }
+        hash
+    }
+
+    /// Generates zobrist hash keys that describe non-pawn positions of each color.
+    fn generate_non_pawn_hashes(&self) -> [u64; Color::NUM] {
+        let mut hashes = [0; Color::NUM];
+        for color in [Color::White, Color::Black] {
+            for piece in [Piece::Bishop, Piece::Knight, Piece::Queen, Piece::Rook, Piece::King] {
+                for square in self.pieces_of(Piece::Pawn, color) {
+                    hashes[color] ^= ZOBRIST.pieces[color][piece][square];
+                }
+            }
+        }
+        hashes
+    }
+
+    /// Get pieces of specific type and color
+    pub fn pieces_of(&self, piece: Piece, color: Color) -> Bitboard {
+        self.pieces[piece] & self.colors[color]
+    }
+
+
     /// Should be run on board creation and after each move. This function generates legal moves
     /// and updates other basic state about the board.
     pub fn analyze_board(&mut self) {
+        // TODO: update hash
         self.checking_state = self.calculate_check_state();
         self.pinning_state = self.calculate_pin_state();
         self.legal_moves = self.generate_legal_moves();
@@ -406,6 +493,7 @@ impl Default for Board {
             side_to_move: Color::White,
             pieces: [Bitboard::default(); Piece::NUM],
             colors: [Bitboard::default(); Color::NUM],
+            state_stack: vec![],
             state: BoardState::default(),
             mailbox: [Piece::None; Square::NUM],
             standard_bitboards: StandardBitboards::new(),

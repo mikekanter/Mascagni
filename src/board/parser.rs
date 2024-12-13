@@ -30,7 +30,6 @@ impl FromStr for Board {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut board = Self::default();
         let mut elements = s.split_whitespace();
-
         let rows = elements.next().ok_or(FenParseErr::MissingData)?.split('/');
 
         for (rank, row) in rows.rev().enumerate() {
@@ -55,14 +54,17 @@ impl FromStr for Board {
             _ => return Err(FenParseErr::InvalidColor),
         };
 
-        // TODO: parse the castling rights
         board.state.castling = Castling::from(elements.next().unwrap());
-
         board.state.en_passant = elements.next().unwrap().try_into().map_err(|()| FenParseErr::InvalidEnPassant)?;
-
         board.state.halfmove_clock = elements.next().unwrap().parse::<u8>().unwrap();
-
         board.state.fullmove_number = elements.next().unwrap().parse::<u16>().unwrap();
+
+        // hash keys
+        board.state.hash_key = board.generate_hash_key();
+        board.state.pawn_key = board.generate_pawn_hash();
+        board.state.major_piece_key = board.generate_major_piece_hash();
+        board.state.minor_piece_key = board.generate_minor_piece_hash();
+        board.state.non_pawn_keys = board.generate_non_pawn_hashes();
 
         Ok(board)
     }
