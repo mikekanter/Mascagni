@@ -349,7 +349,7 @@ impl Board {
             // lost castling rights
             return
         }
-        let full_occupancies = self.colors[self.side_to_move] | !self.colors[self.side_to_move];
+        let full_occupancies = self.colors[self.side_to_move] | self.colors[!self.side_to_move];
         if !((Kind::PATH_MASK & full_occupancies).is_empty()) {
             // cant castle because there is a piece between the king and the rooks
             return

@@ -21,7 +21,7 @@ macro_rules! impl_castling_kind {
 
             impl CastlingKind for $kind {
                 const MASK: u8 = $mask;
-                const PATH_MASK: Bitboard = Bitboard((1 << ($start_square.index() + 1)) | (1 << ($through_square.index() + 1)));
+                const PATH_MASK: Bitboard = Bitboard((1 << $through_square.index()));
                 const CHECK_SQUARES: [Square; 2] = [$start_square, $through_square];
                 const CASTLING_MOVE: Move = Move::new($start_square, $target_square, $move_type);
             }
