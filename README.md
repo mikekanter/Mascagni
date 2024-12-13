@@ -1,13 +1,13 @@
-# Chess Engine
+# Puccini
 
-A homemade chess engine in rust
+A homemade chess engine in rust. Work in progress.
 
 ## Getting started
 
 ```bash
 cargo run
 ```
-This will start a game in the terminal. Currently one input moves for both sides. Eventually, we hope to have the computer play for one side in a somewhat intelligent way.
+This will start a game in the terminal. Currently one input moves for both sides. Eventually, I hope to have the computer play for one side in a somewhat intelligent way.
 
 ## TODO
 
