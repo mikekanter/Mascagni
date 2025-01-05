@@ -1,10 +1,10 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Add, Sub, Mul};
 
-use super::{Rank, File, Square};
+use super::{square, File, Rank, Square};
 
 
 /// 64-bit unsigned. Each bit indicates a square's occupancy
-#[derive(Copy, Clone, PartialEq, PartialOrd, Default)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Default, Debug)]
 #[repr(transparent)]
 pub struct Bitboard(pub u64);
 
@@ -51,6 +51,34 @@ impl Bitboard {
     /// Clears a specific bit
     pub fn clear(&mut self, square: Square) {
         self.0 &= !(1 << square as u64);
+    }
+
+    pub fn pretty_print(&self) {
+        let mut cur_square = Square::A1;
+        let mut lines: [String; 8] = [(); 8].map(|_| String::new());
+        let mut current_line = 0;
+
+        let cloned = self.clone();
+
+        while cur_square <= Square::H8 {
+            let is_occupied: bool = !(cloned & Bitboard::from(cur_square)).is_empty();
+            let new_char: String = match is_occupied {
+                true => "X",
+                false => "-",
+            }.to_owned();
+
+            lines[current_line] = lines[current_line].to_owned() + &new_char;
+            if cur_square.file() == File::H {
+                current_line += 1;
+            }
+            cur_square = cur_square.shift(1)
+        }
+        lines.reverse();
+        println!("{}", lines
+            .map(|l| l.split("").collect::<Vec<&str>>().join(" "))
+            .join("\n")
+        );
+
     }
 }
 

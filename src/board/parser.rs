@@ -3,6 +3,7 @@ use std::str::FromStr;
 use super::Board;
 use crate::types::{Castling, Color, Square};
 
+#[derive(Debug)]
 pub enum FenParseErr {
     /// Fen is missing data
     MissingData,

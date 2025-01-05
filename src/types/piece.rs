@@ -36,6 +36,20 @@ impl TryFrom<char> for Piece {
     }
 }
 
+impl ToString for Piece {
+    fn to_string(&self) -> String {
+        match self {
+            Self::King => String::from("King"),
+            Self::Queen => String::from("Queen"),
+            Self::Rook => String::from("Rook"),
+            Self::Bishop => String::from("Bishop"),
+            Self::Knight => String::from("Knight"),
+            Self::Pawn => String::from("Pawn"),
+            Self::None => String::from("NONE"),
+        }
+    }
+}
+
 impl<T> Index<Piece> for [T] {
     type Output = T;
 

@@ -4,10 +4,12 @@ use board::Board;
 use uci::collect_algebraic_moves;
 
 use std::io::{stdin, stdout, Write};
+use crate::tools::perft;
 
 mod types;
 mod board;
 mod uci;
+mod tools;
 
 fn main() {
     // let mut s = String::new();
@@ -26,9 +28,12 @@ fn main() {
 
     let mut stdout = stdout();
 
-    let board = Board::new(String::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
+    let board = Board::new(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"));
+
     match board {
         Ok(mut b) => {
+            let one_deep = perft::perft(&mut b, 1);
+            println!("one_deep: {}", one_deep);
             while b.legal_moves.len > 0 {
                 let alg_moves = collect_algebraic_moves(&b);
                 b.pretty_print();

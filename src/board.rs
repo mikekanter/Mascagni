@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use zobrist::ZOBRIST;
 
-use crate::types::{Bitboard, BlackKingside, BlackQueenside, Castling, CastlingKind, Color, File, MoveList, MoveType, Piece, Rank, Square, WhiteKingside, WhiteQueenside};
+use crate::types::{Bitboard, BlackKingside, BlackQueenside, Castling, CastlingKind, Color, File, FullMove, MoveList, MoveType, Piece, Rank, Square, WhiteKingside, WhiteQueenside};
 
 use self::movegen::{black_pawn_advances, generate_bishop_attacks, generate_queen_attacks, generate_rook_attacks, white_pawn_advances, StandardBitboards};
 
@@ -18,6 +18,8 @@ mod zobrist;
 /// major pieces. Plus a hash for all pieces (and maybe a hash for non-pawns?)
 #[derive(Default, Copy, Clone)]
 struct BoardState {
+    /// Piece which was captured on the last turn
+    captured_piece: Piece,
     hash_key: u64,
     pawn_key: u64,
     major_piece_key: u64,
@@ -30,17 +32,19 @@ struct BoardState {
 }
 
 #[derive(Default, Copy, Clone)]
-struct Check {
-    checking_piece: Square,
+pub struct Check {
+    pub checking_piece: Square,
+    pub piece: Piece,
+    pub king_square: Square,
     /// The squares that a piece can enter to block this check (including captures)
-    block_space: Bitboard,
+    pub block_space: Bitboard,
 }
 
 #[derive(Default, Copy, Clone)]
 pub struct CheckState {
-    check_space: Bitboard,
+    pub check_space: Bitboard,
     /// TODO: Potentially change this to a slice
-    checks: [Check; 2],
+    pub checks: [Check; 2],
 }
 
 #[derive(Clone)]
@@ -49,13 +53,14 @@ pub struct Board {
     pub side_to_move: Color,
     state: BoardState,
     state_stack: Vec<BoardState>,
+    pub move_stack: Vec<FullMove>,
     // pieces / mailboxes
     colors: [Bitboard; Color::NUM],
     pieces: [Bitboard; Piece::NUM],
     mailbox: [Piece; Square::NUM],
     standard_bitboards: StandardBitboards,
     // calculated board state
-    checking_state: CheckState,
+    pub checking_state: CheckState,
     pinning_state: [Bitboard; Square::NUM],
     pub legal_moves: MoveList,
 }
@@ -182,6 +187,10 @@ impl Board {
         }
     }
 
+    pub fn is_check(&self) -> bool {
+        self.checking_state.checks[0].checking_piece != Square::None
+    }
+
     pub fn piece_on(&self, square: Square) -> Piece {
         self.mailbox[square]
     }
@@ -279,8 +288,10 @@ impl Board {
                     index = 1;
                 }
                 answer.checks[index].checking_piece = square;
+                answer.checks[index].piece = piece;
                 let king_square = our_king.lsb();
                 // TODO. FIGURE OUT BLOCKING SPACE
+                answer.checks[index].king_square = king_square;
                 answer.checks[index].block_space = match piece {
                     // Non-ray attacks -> can only capture
                     Piece::Pawn => sq_bb,
@@ -288,7 +299,7 @@ impl Board {
                     // TODO: Get squares in-between
                     Piece::Bishop => self.standard_bitboards.between[square][king_square] | sq_bb,
                     Piece::Rook => self.standard_bitboards.between[square][king_square] | sq_bb,
-                    Piece::Queen => self.standard_bitboards.between[square][king_square] | sq_bb,
+                    Piece::Queen => self.standard_bitboards.between[king_square][square] | sq_bb,
                     // Not possible that a check comes from one of the below
                     Piece::King => Bitboard(0),
                     Piece::None => Bitboard(0),
@@ -437,7 +448,8 @@ impl Board {
             return
         }
         let full_occupancies = self.colors[self.side_to_move] | self.colors[!self.side_to_move];
-        if !((Kind::PATH_MASK & full_occupancies).is_empty()) {
+        let path_mask: Bitboard = self.standard_bitboards.between[Kind::CASTLING_MOVE.start()][Kind::ROOK_START_SQUARE];
+        if !((path_mask & full_occupancies).is_empty()) {
             // cant castle because there is a piece between the king and the rooks
             return
         }
@@ -483,7 +495,10 @@ impl Board {
             cur_square = cur_square.shift(1);
         }
         lines.reverse();
-        println!("{}", lines.join("\n"));
+        println!("{}", lines
+            .map(|l| l.split("").collect::<Vec<&str>>().join(" "))
+            .join("\n")
+        );
     }
 }
 
@@ -494,6 +509,7 @@ impl Default for Board {
             pieces: [Bitboard::default(); Piece::NUM],
             colors: [Bitboard::default(); Color::NUM],
             state_stack: vec![],
+            move_stack: vec![],
             state: BoardState::default(),
             mailbox: [Piece::None; Square::NUM],
             standard_bitboards: StandardBitboards::new(),

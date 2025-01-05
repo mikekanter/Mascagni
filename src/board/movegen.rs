@@ -20,12 +20,11 @@ pub struct StandardBitboards {
 
 /// Generate the map of betweeners
 pub fn generate_betweeners() -> [[Bitboard; Square::NUM]; Square::NUM] {
-    let empty = Bitboard(0);
     let mut between_bbs: [[Bitboard; Square::NUM]; Square::NUM]
         = [[Bitboard(0); Square::NUM]; Square::NUM];
-    for s1_index in 0..63 {
+    for s1_index in 0..64 {
         let s1 = Square::new(s1_index);
-        for s2_index in 0..63 {
+        for s2_index in 0..64 {
             let s2 = Square::new(s2_index);
             // occupancy boards
             let o1 = Bitboard::from(s1);
@@ -35,7 +34,7 @@ pub fn generate_betweeners() -> [[Bitboard; Square::NUM]; Square::NUM] {
                 // attack_boards
                 if i == Piece::Bishop {
                     let a1 = generate_bishop_attacks(&s1, &o2);
-                    if a1 & o2 > empty {
+                    if !((a1 & o2).is_empty()) {
                         let a2 = generate_bishop_attacks(&s2, &o1);
                         between_bbs[s1][s2] = a1 & a2;
                         break
@@ -43,7 +42,7 @@ pub fn generate_betweeners() -> [[Bitboard; Square::NUM]; Square::NUM] {
                 } else {
                     // rook
                     let a1 = generate_rook_attacks(&s1, &o2);
-                    if a1 & o2 > empty {
+                    if !((a1 & o2).is_empty()) {
                         let a2 = generate_rook_attacks(&s2, &o1);
                         between_bbs[s1][s2] = a1 & a2;
                         break
@@ -267,5 +266,29 @@ impl Default for StandardBitboards {
             king_attacks: create_map(|square| generate_king_moves(square)),
             between: generate_betweeners(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn bishop() {
+        let tweeners = generate_betweeners();
+        let diag_a1_e5 = tweeners[Square::A1][Square::E5];
+        diag_a1_e5.pretty_print();
+        assert_eq!(diag_a1_e5,
+            Bitboard::from(Square::B2)
+                | Bitboard::from(Square::C3)
+                | Bitboard::from(Square::D4)
+        );
+    }
+
+    #[test]
+    fn rook() {
+        let tweeners = generate_betweeners();
+        let hopefully_b1 = tweeners[Square::E8][Square::H8];
+        hopefully_b1.pretty_print();
+        assert_eq!(hopefully_b1, Bitboard::from(Square::F8) | Bitboard::from(Square::G8));
     }
 }

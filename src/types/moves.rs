@@ -2,14 +2,18 @@ use super::{Piece, Square};
 
 #[derive(Clone, Copy, PartialEq, Default)]
 pub struct FullMove {
+    /// The piece that moved
     pub piece: Piece,
+    /// The piece that captured
+    pub captured: Piece,
     pub inner_move: Move,
 }
 
 impl FullMove {
-    pub const fn new(piece: Piece, mv: Move) -> Self {
+    pub const fn new(moving_piece: Piece, captured_piece: Piece, mv: Move) -> Self {
         Self {
-            piece,
+            piece: moving_piece,
+            captured: captured_piece,
             inner_move: mv,
         }
     }
@@ -57,27 +61,27 @@ impl Move {
             start as u16 | (target as u16) << 6 | (move_type as u16) << 12
         )
     }
-    pub const fn start(self) -> Square {
+    pub const fn start(&self) -> Square {
         Square::new((self.0 & Self::START_MASK) as u8)
     }
-    pub const fn target(self) -> Square {
+    pub const fn target(&self) -> Square {
         Square::new(((self.0 & Self::TARGET_MASK) >> 6) as u8)
     }
-    pub const fn kind(self) -> MoveType {
+    pub const fn kind(&self) -> MoveType {
         unsafe { std::mem::transmute((self.0 >> 12) as u8) }
     }
-    pub const fn is_en_passant(self) -> bool {
+    pub const fn is_en_passant(&self) -> bool {
        matches!(self.kind(), MoveType::EnPassant)
     }
-    pub const fn is_castling(self) -> bool {
+    pub const fn is_castling(&self) -> bool {
         matches!(self.kind(), MoveType::KingsideCastle)
             || matches!(self.kind(), MoveType::QueensideCastle)
     }
     /// TODO: See if this actually works.
-    pub const fn is_capture(self) -> bool {
+    pub const fn is_capture(&self) -> bool {
         (self.0 >> 14) & 1 != 0
     }
-    pub const fn is_promotion(self) -> bool {
+    pub const fn is_promotion(&self) -> bool {
         matches!(self.kind(), MoveType::PromotionToKnight)
             || matches!(self.kind(), MoveType::PromotionToBishop)
             || matches!(self.kind(), MoveType::PromotionToRook)
@@ -86,5 +90,18 @@ impl Move {
             || matches!(self.kind(), MoveType::PromotionCaptureToBishop)
             || matches!(self.kind(), MoveType::PromotionCaptureToRook)
             || matches!(self.kind(), MoveType::PromotionCaptureToQueen)
+    }
+    pub const fn promo_piece(&self) -> Piece {
+        match self.kind() {
+            MoveType::PromotionToKnight => Piece::Knight,
+            MoveType::PromotionToBishop => Piece::Bishop,
+            MoveType::PromotionToRook => Piece::Rook,
+            MoveType::PromotionToQueen => Piece::Queen,
+            MoveType::PromotionCaptureToKnight => Piece::Knight,
+            MoveType::PromotionCaptureToBishop => Piece::Bishop,
+            MoveType::PromotionCaptureToRook => Piece::Rook,
+            MoveType::PromotionCaptureToQueen => Piece::Queen,
+            _ => Piece::None,
+        }
     }
 }

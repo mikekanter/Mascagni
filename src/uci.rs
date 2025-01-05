@@ -17,7 +17,11 @@ impl AlgebraicMove {
 
 pub fn move_to_full(mv: Move, board: &Board) -> FullMove {
     let piece = board.piece_on(mv.start());
-    FullMove::new(piece, mv)
+    let captured = match mv.is_en_passant() {
+        true => Piece::Pawn,
+        false => board.piece_on(mv.target()),
+    };
+    FullMove::new(piece, captured, mv)
 }
 
 /// Take a board and return a list of full, algebraic moves.

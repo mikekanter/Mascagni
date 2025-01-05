@@ -1,28 +1,28 @@
 use std::ops::Index;
 
-use super::{Bitboard, Move, MoveType, Square};
+use super::{Move, MoveType, Square};
 
 pub trait CastlingKind {
     /// The mask of the catling kind
     const MASK: u8;
     /// The path mask = squares that must be empty to legally castle
-    const PATH_MASK: Bitboard;
+    const ROOK_START_SQUARE: Square;
     /// The check squares are the squares that must not be in check for the castling to occur
-    const CHECK_SQUARES: [Square; 2];
+    const CHECK_SQUARES: [Square; 3];
     // The move associated with such a castling kind.
     // const CASTLING_MOVE
     const CASTLING_MOVE: Move;
 }
 
 macro_rules! impl_castling_kind {
-    ($($kind: ident => $mask:expr, $start_square:expr, $through_square:expr, $target_square: expr, $move_type: expr,)*) => {
+    ($($kind: ident => $mask:expr, $start_square:expr, $through_square:expr, $target_square: expr, $rook_square: expr, $move_type: expr,)*) => {
         $(
             pub struct $kind;
 
             impl CastlingKind for $kind {
                 const MASK: u8 = $mask;
-                const PATH_MASK: Bitboard = Bitboard((1 << $through_square.index()));
-                const CHECK_SQUARES: [Square; 2] = [$start_square, $through_square];
+                const ROOK_START_SQUARE: Square = $rook_square;
+                const CHECK_SQUARES: [Square; 3] = [$start_square, $through_square, $target_square];
                 const CASTLING_MOVE: Move = Move::new($start_square, $target_square, $move_type);
             }
         )*
@@ -30,10 +30,10 @@ macro_rules! impl_castling_kind {
 }
 
 impl_castling_kind! {
-    WhiteKingside => 1, Square::E1, Square::F1, Square::G1, MoveType::KingsideCastle,
-    WhiteQueenside => 2, Square::E1, Square::D1, Square::C1, MoveType::QueensideCastle,
-    BlackKingside => 4, Square::E8, Square::F8, Square::G8, MoveType::KingsideCastle,
-    BlackQueenside => 8, Square::E8, Square::D8, Square::C8, MoveType::QueensideCastle,
+    WhiteKingside => 1, Square::E1, Square::F1, Square::G1, Square::H1, MoveType::KingsideCastle,
+    WhiteQueenside => 2, Square::E1, Square::D1, Square::C1, Square::A1, MoveType::QueensideCastle,
+    BlackKingside => 4, Square::E8, Square::F8, Square::G8, Square::H8, MoveType::KingsideCastle,
+    BlackQueenside => 8, Square::E8, Square::D8, Square::C8, Square::A8, MoveType::QueensideCastle,
 }
 
 #[derive(Copy, Clone, Default)]
