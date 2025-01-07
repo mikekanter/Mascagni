@@ -1,4 +1,4 @@
-# Puccini
+# Mascagni
 
 A homemade chess engine in rust. Work in progress.
 
